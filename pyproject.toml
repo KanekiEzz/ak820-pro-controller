@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ak820-ctl"
+version = "0.1.0"
+description = "Linux control software for the Ajazz AK820 Pro keyboard (Python port)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["pyusb>=1.2"]
+
+[project.optional-dependencies]
+lcd = ["Pillow>=9"]
+hidapi = ["hidapi>=0.14"]
+
+[project.scripts]
+ak820-ctl = "ak820.cli:main"
+ak820-gui = "ak820.gui:main"
+
+[tool.setuptools]
+packages = ["ak820"]

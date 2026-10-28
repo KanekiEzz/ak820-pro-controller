@@ -1,0 +1,13 @@
+[Unit]
+Description=AK820 Pro LCD temperature display
+After=multi-user.target
+
+[Service]
+Type=simple
+# Adjust the path (find it with: which ak820-ctl)
+ExecStart=/usr/local/bin/ak820-ctl lcd --interval 5 --max-interval 60
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
