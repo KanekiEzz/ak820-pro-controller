@@ -1,0 +1,5 @@
+# USB communication with the keyboard
+pyusb>=1.2
+
+# Required for LCD rendering and LCD commands
+Pillow>=9

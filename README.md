@@ -1,56 +1,129 @@
-# ak820-ctl (Python)
+# AK820 control (Python)
 
-Linux control software for the Ajazz AK820 Pro keyboard, with a CLI and a Tk GUI.
+Control software for the Ajazz AK820 Pro keyboard. It includes a graphical app and a command-line tool for keyboard lighting, the sleep timer, the built-in clock, and the LCD screen.
 
-This is a Python port of [gohv/EPOMAKER-Ajazz-AK820-Pro](https://github.com/gohv/EPOMAKER-Ajazz-AK820-Pro)
-(originally written in Rust, MIT licensed). The USB protocol was reverse-engineered by the
-original authors; see the credits at the bottom.
+## Screenshots
 
-The official software only supports Windows. This project talks to the keyboard over USB HID to
-control lighting, the sleep timer, the built-in clock, and the TFT screen.
+![AK820 Pro Control Panel](Images/photo1.png)
 
-## Features
-
-- 20 lighting modes with RGB color, rainbow, brightness, speed and direction
-- Sleep timer (never, 1 min, 5 min, 30 min)
-- Clock sync (pushes system time to the keyboard)
-- Live CPU/GPU temperature + clock on the 128x128 LCD
-- GUI control panel (tkinter)
+![AK820 Pro Control Panel with the lighting color picker open](Images/photo2.png)
 
 ## Requirements
 
-- Linux
-- Python 3.9+
-- `libusb-1.0` (`sudo apt install libusb-1.0-0` on Debian/Ubuntu)
-- `pyusb` (installed automatically)
-- `Pillow` for the LCD commands (`pip install ".[lcd]"`)
-- `tkinter` for the GUI (`sudo apt install python3-tk` on Debian/Ubuntu)
+- Python 3.9 or newer
+- Tkinter, for the graphical app (often included with Python; on macOS install `python-tk` with Homebrew)
+- `libusb` (needed by PyUSB to communicate with the keyboard)
+- Python packages listed in [`requirements.txt`](requirements.txt): PyUSB and Pillow
+
+The GUI and CLI do not need Pillow for basic controls. Pillow is needed for LCD commands; it is included in `requirements.txt` so all project features are installed together.
 
 ## Install
 
+Open Terminal and change into the folder containing this README. Create a virtual environment and install the project and its dependencies:
+
 ```bash
-pip install ".[lcd]"        # installs ak820-ctl and ak820-gui
-# or run without installing:
-pip install pyusb Pillow
-python -m ak820 list-modes
+python3 -m venv .venv
 ```
 
-## macOS
+Activate it:
 
-There is no `apt` or udev on macOS. Use Homebrew instead:
+```bash
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Install the Python dependencies and the `ak820` command-line package:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -e .
+```
+
+Use this virtual environment whenever you run the app. To activate it again in a new Terminal window, run `source .venv/bin/activate` from the project folder.
+
+### macOS setup
+
+Install Homebrew if it is not already installed, then install the USB and Tk libraries:
 
 ```bash
 brew install libusb python-tk
-pip install ".[lcd]"
-sudo ak820-ctl probe        # macOS usually needs sudo to claim the USB interface
 ```
 
-Skip the "USB permissions" section below. macOS support is untested: libusb cannot detach
-Apple's HID driver, so if `probe` fails with "Access denied" the interface is held by macOS.
+If `python3` is not available, install Homebrew Python with `brew install python` and then repeat the virtual environment steps above. macOS USB access may require running the app with `sudo`; the command below uses the virtual environment's Python so it can still find the installed packages.
+
+### Linux setup
+
+On Debian or Ubuntu, install the system USB and Tk libraries before creating the virtual environment:
+
+```bash
+sudo apt update
+sudo apt install libusb-1.0-0 python3-tk python3-venv
+```
+
+To run the app without `sudo`, install the udev rule as described in [USB permissions](#usb-permissions-linux-only). Otherwise, run it with `sudo` using the virtual environment's Python.
+
+## Run the graphical app
+
+With the virtual environment activated, run:
+
+```bash
+python -m ak820.gui
+```
+
+Or use the installed shortcut:
+
+```bash
+ak820-gui
+```
+
+If keyboard access is denied, use the platform-specific USB permission instructions above. For macOS, try:
+
+```bash
+sudo .venv/bin/python -m ak820.gui
+```
+
+For Linux without the udev rule, use:
+
+```bash
+sudo .venv/bin/python -m ak820.gui
+```
+
+## Run the command-line tool
+
+With the virtual environment activated:
+
+```bash
+ak820-ctl list-modes
+ak820-ctl probe
+ak820-ctl light static --color ff0000 --brightness 5 --speed 3
+ak820-ctl sleep never
+ak820-ctl sync-time
+```
+
+Available lighting modes: `off`, `static`, `single-on`, `single-off`, `glittering`, `falling`, `colourful`, `breath`, `spectrum`, `outward`, `scrolling`, `rolling`, `rotating`, `explode`, `launch`, `ripples`, `flowing`, `pulsating`, `tilt`, and `shuttle`.
+
+Options for `light`:
+
+- `--color` / `-c`: hex RGB color (default `ff0000`)
+- `--rainbow` / `-r`: use rainbow colors
+- `--brightness` / `-b`: 0 to 5 (default 5)
+- `--speed` / `-s`: 0 to 5 (default 3)
+- `--direction` / `-d`: `left`, `right`, `up`, or `down`, depending on the selected mode
+
+Other commands:
+
+```bash
+ak820-ctl sleep never       # never | 1m | 5m | 30m
+ak820-ctl sync-time
+ak820-ctl lcd --interval 5 --max-interval 60
+ak820-ctl lcd-test red      # red | green | blue | white | black | diag | hex
+ak820-ctl stats
+```
 
 ## USB permissions (Linux only)
 
-By default the USB device requires root. To use it as a normal user, install the udev rule:
+To access the keyboard as your normal user, install the included udev rule:
 
 ```bash
 sudo cp 99-ak820.rules /etc/udev/rules.d/
@@ -58,88 +131,27 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-Then unplug and replug the keyboard. Without this step you can still run everything with `sudo`.
+Unplug and reconnect the keyboard after installing the rule. Without it, run the GUI or CLI with `sudo`.
 
-## Usage
+## Debugging
 
-### GUI
-
-```bash
-ak820-gui        # or: python -m ak820.gui
-```
-
-### CLI
-
-```bash
-ak820-ctl list-modes
-
-ak820-ctl light static --color ff0000 --brightness 5 --speed 3
-ak820-ctl light breath --color 00ff00 --rainbow
-ak820-ctl light spectrum --brightness 4 --speed 2
-ak820-ctl light scrolling --direction up --color 0000ff
-
-ak820-ctl sleep never        # never | 1m | 5m | 30m
-ak820-ctl sync-time
-ak820-ctl probe
-```
-
-Available modes: off, static, single-on, single-off, glittering, falling, colourful, breath,
-spectrum, outward, scrolling, rolling, rotating, explode, launch, ripples, flowing, pulsating,
-tilt, shuttle.
-
-Options for `light`:
-
-- `--color` / `-c`: hex RGB color (default `ff0000`)
-- `--rainbow` / `-r`: use rainbow colors instead of a single color
-- `--brightness` / `-b`: 0 to 5 (default 5)
-- `--speed` / `-s`: 0 to 5 (default 3)
-- `--direction` / `-d`: left, right, up, down (only for modes that support it:
-  scrolling = up/down; rolling, flowing, tilt = left/right)
-
-### LCD
-
-```bash
-ak820-ctl lcd --interval 5 --max-interval 60   # live time + CPU/GPU temp
-ak820-ctl lcd-test red                          # red | green | blue | white | black | diag | hex
-ak820-ctl stats                                 # preview the stats in the terminal
-```
-
-To run the LCD display at boot, edit the `ExecStart` path in `ak820-lcd.service`, then:
-
-```bash
-sudo cp ak820-lcd.service /etc/systemd/system/
-sudo systemctl enable --now ak820-lcd
-```
-
-### Debugging
-
-- `AK820_DEBUG=1` hex-dumps every packet sent to the keyboard.
-- `AK820_IFACE=<n>` overrides the USB interface (default 3, the vendor control interface).
+- Set `AK820_DEBUG=1` to print every USB packet sent to the keyboard.
+- Set `AK820_IFACE=<n>` to choose a USB interface (default: `3`, the vendor control interface).
+- On macOS, USB access can fail if macOS holds the keyboard's HID interface. macOS support is untested.
 
 ## Project layout
 
-| File | Port of | Purpose |
-| --- | --- | --- |
-| `ak820/protocol.py` | `protocol.rs` | Packet builders, enums, RGB565 encoding |
-| `ak820/usb_device.py` | `usb.rs` | libusb backend (used by the CLI and GUI) |
-| `ak820/hidraw.py` | `hidraw.rs` | `/dev/hidraw*` ioctl backend (alternative) |
-| `ak820/device.py` | `device.rs` | `hidapi` backend (alternative) |
-| `ak820/lcd.py` | `lcd.rs` | 128x128 framebuffer renderer (Pillow) |
-| `ak820/stats.py` | `stats.rs` | CPU/GPU temperature and memory stats |
-| `ak820/cli.py` | `main.rs` | `ak820-ctl` command |
-| `ak820/gui.py` | `gui/*` | `ak820-gui` window (tkinter instead of egui) |
+| File | Purpose |
+| --- | --- |
+| `ak820/protocol.py` | Packet builders, enums, RGB565 encoding |
+| `ak820/usb_device.py` | libusb backend used by the CLI and GUI |
+| `ak820/hidraw.py` | Linux `/dev/hidraw*` ioctl backend |
+| `ak820/device.py` | `hidapi` backend |
+| `ak820/lcd.py` | LCD framebuffer renderer (Pillow) |
+| `ak820/stats.py` | CPU/GPU temperature and memory stats |
+| `ak820/cli.py` | `ak820-ctl` command |
+| `ak820/gui.py` | Tkinter graphical app |
 
-Run the tests with `python -m unittest discover -s tests`.
+## Credits
 
-## How it works
-
-The keyboard uses a Sonix SN32F299 MCU with 4 USB HID interfaces. Interface 3 handles control
-commands (lighting, sleep, clock) via HID feature reports; interface 2 receives LCD image data
-over an interrupt endpoint.
-
-## Credits & license
-
-MIT, like the original project. Protocol work by the
-[TaxMachine C++ reference](https://github.com/TaxMachine/ajazz-keyboard-software-linux) and
-[KyleBoyer/TFTTimeSync-node](https://github.com/KyleBoyer/TFTTimeSync-node) (clock sync), as
-credited in the original repository.
+MIT license, like the original project. Protocol work by the [TaxMachine C++ reference](https://github.com/TaxMachine/ajazz-keyboard-software-linux) and [KyleBoyer/TFTTimeSync-node](https://github.com/KyleBoyer/TFTTimeSync-node) (clock sync), as credited in the original repository.
